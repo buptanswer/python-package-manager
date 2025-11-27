@@ -293,7 +293,7 @@ A: 完全可以！支持命令行参数和自动化脚本。
 ## 📧 联系方式
 
 - 作者：YuliBUPT
-- 邮箱：your.email@example.com
+- 邮箱：1404498804@qq.com
 - 项目主页：https://github.com/buptanswer/package-installer
 
 ---
