@@ -227,30 +227,39 @@ def extract_imports_from_code(code_text: str) -> Set[str]:
     """智能提取代码中的所有import包名（保持向后兼容）"""
     packages = set()
     
-    # 移除注释和字符串
+    # 移除注释
     lines = []
     for line in code_text.split('\n'):
+        # 只移除行末注释，不处理字符串
         line = re.sub(r'#.*$', '', line)
-        line = re.sub(r'["\'].*?["\']', '', line)
         lines.append(line.strip())
     
-    code_text = '\n'.join(lines)
+    # 使用更精确的正则表达式来匹配import语句，确保它们不在字符串中
+    # 参考: https://stackoverflow.com/questions/6883049/regex-to-match-python-import-statements
     
     # from xxx import yyy
-    from_pattern = r'^\s*from\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    from_pattern = r'^\s*from\s+([a-zA-Z_][a-zA-Z0-9_.]*)\s+import\s+'
     # import xxx
-    import_pattern = r'^\s*import\s+(.+)$'
+    import_pattern = r'^\s*import\s+([a-zA-Z_][a-zA-Z0-9_.]+(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_.]+)*)'
     
-    for line in code_text.split('\n'):
-        if not line.strip():
+    for line in lines:
+        if not line:
             continue
             
+        # 检查行是否包含有效的import语句（不在字符串中）
+        # 简单的检查：如果行中引号数量为奇数，则可能包含未闭合的字符串
+        # 这种情况下跳过该行，避免误匹配
+        if line.count('"') % 2 != 0 or line.count("'") % 2 != 0:
+            continue
+            
+        # 匹配 from xxx import yyy
         from_match = re.match(from_pattern, line)
         if from_match:
             pkg = from_match.group(1).split('.')[0]
             packages.add(pkg)
             continue
         
+        # 匹配 import xxx
         import_match = re.match(import_pattern, line)
         if import_match:
             imports_str = import_match.group(1)
@@ -278,6 +287,12 @@ def extract_imports_with_details(code_text: str, file_path: Path) -> List[Import
         line_without_comment = re.sub(r'#.*$', '', line).strip()
         
         if not line_without_comment:
+            continue
+        
+        # 检查行是否包含有效的import语句（不在字符串中）
+        # 简单的检查：如果行中引号数量为奇数，则可能包含未闭合的字符串
+        # 这种情况下跳过该行，避免误匹配
+        if line_without_comment.count('"') % 2 != 0 or line_without_comment.count("'") % 2 != 0:
             continue
             
         # 匹配 from xxx import yyy 格式
@@ -502,10 +517,9 @@ def install_package(package_name: str, pip_package: str) -> Tuple[bool, str]:
         return False, f"异常: {str(e)}"
 
 
-def safe_print(text: str):
-    """安全打印函数，处理编码问题"""
+def replace_emojis(text: str) -> str:
+    """替换文本中的emoji为ASCII安全的替代字符"""
     if os.name == 'nt':
-        # Windows环境下替换emoji字符
         emoji_map = {
             '🚀': '[*]', '📁': '[DIR]', '📋': '[INFO]', '🔍': '[SCAN]',
             '📝': '[FILE]', '📦': '[PKG]', '✨': '[OK]', '⚠️': '[WARN]',
@@ -514,6 +528,12 @@ def safe_print(text: str):
         }
         for emoji, replacement in emoji_map.items():
             text = text.replace(emoji, replacement)
+    return text
+
+
+def safe_print(text: str):
+    """安全打印函数，处理编码问题"""
+    text = replace_emojis(text)
     
     try:
         print(text)
@@ -545,15 +565,7 @@ def print_colored(text: str, color: str = ""):
             pass
     
     # 处理Windows编码问题，将emoji替换为简单字符
-    if os.name == 'nt':
-        emoji_map = {
-            '🚀': '[*]', '📁': '[DIR]', '📋': '[INFO]', '🔍': '[SCAN]',
-            '📝': '[FILE]', '📦': '[PKG]', '✨': '[OK]', '⚠️': '[WARN]',
-            '✅': '[SUCCESS]', '❌': '[FAIL]', '📄': '[DOC]', '📊': '[STATS]',
-            '⚙️': '[WORK]', '💡': '[TIP]', '🎉': '[DONE]'
-        }
-        for emoji, replacement in emoji_map.items():
-            text = text.replace(emoji, replacement)
+    text = replace_emojis(text)
     
     try:
         if color and color in colors:
@@ -856,23 +868,34 @@ def manual_install(imports_code: str, generate_req: bool = True):
     print_colored("=" * 70, "cyan")
     
     print_colored("\n📝 步骤1: 分析import语句...", "blue")
-    all_packages = extract_imports_from_code(imports_code)
     
-    if not all_packages:
+    # 创建一个临时的Path对象表示手动导入
+    temp_file_path = Path("manual_imports")
+    
+    # 使用增强版提取函数获取详细的导入信息
+    imports_details = extract_imports_with_details(imports_code, temp_file_path)
+    
+    if not imports_details:
         print_colored("   ⚠️  未检测到任何import语句", "yellow")
         return
     
-    print(f"   检测到 {len(all_packages)} 个包")
+    # 创建包追踪器
+    tracker = PackageTracker()
+    for import_info in imports_details:
+        tracker.add_import(import_info)
+    
+    print(f"   检测到 {len(tracker.all_packages)} 个包")
     
     print_colored("\n🔍 步骤2: 过滤标准库...", "blue")
-    third_party = all_packages - STDLIB
-    print(f"   标准库: {len(all_packages) - len(third_party)} 个 | 第三方库: {len(third_party)} 个")
+    third_party = tracker.get_third_party_packages()
+    print(f"   标准库: {len(tracker.all_packages) - len(third_party)} 个 | 第三方库: {len(third_party)} 个")
     
     if not third_party:
         print_colored("\n✨ 所有包都是标准库!", "green")
         return
     
-    process_installation(third_party, generate_req)
+    # 使用增强版安装流程
+    enhanced_process_installation(tracker, generate_req, "manual_imports")
 
 
 if __name__ == "__main__":
