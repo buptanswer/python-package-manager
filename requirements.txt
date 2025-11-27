@@ -1,0 +1,63 @@
+# ==============================================================================
+# 📦 Enhanced Python Package Requirements
+# ==============================================================================
+# Generated: 2025-11-26 20:17:27
+# Project:   news-claude4.5
+# Files:     1 Python files scanned
+# Packages:  5 third-party packages
+# Imports:   5 import statements
+# ==============================================================================
+
+# 📋 DEPENDENCY OVERVIEW
+# ------------------------------------------------------------------------------
+# beautifulsoup4       → 1 file(s), 1 import(s)
+# jieba                → 1 file(s), 1 import(s)
+# matplotlib           → 1 file(s), 1 import(s)
+# requests             → 1 file(s), 1 import(s)
+# wordcloud            → 1 file(s), 1 import(s)
+# ------------------------------------------------------------------------------
+
+# 📦 DETAILED PACKAGE INFORMATION
+# ==============================================================================
+
+# beautifulsoup4
+# --------------
+beautifulsoup4
+#   📄 news_crawler.py:
+#     L  7: from bs4 import BeautifulSoup
+
+# jieba
+# -----
+jieba
+#   📄 news_crawler.py:
+#     L 20: import jieba
+
+# matplotlib
+# ----------
+matplotlib
+#   📄 news_crawler.py:
+#     L 18: import matplotlib.pyplot as plt
+
+# requests
+# --------
+requests
+#   📄 news_crawler.py:
+#     L  6: import requests
+
+# wordcloud
+# ---------
+wordcloud
+#   📄 news_crawler.py:
+#     L 19: from wordcloud import WordCloud
+
+# 📊 FILE USAGE STATISTICS
+# ==============================================================================
+# 📄 news_crawler.py: 5 third-party imports
+#     L  6: requests (requests)
+#     L  7: bs4 (beautifulsoup4)
+#     L 18: matplotlib (matplotlib)
+#     L 19: wordcloud (wordcloud)
+#     L 20: jieba (jieba)
+#
+# ==============================================================================
+# End of requirements.txt
