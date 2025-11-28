@@ -38,15 +38,15 @@
 ### 方式1：直接下载
 ```bash
 # 下载脚本
-wget https://raw.githubusercontent.com/buptanswer/package-installer/main/package_installer_yulibupt.py
+wget https://raw.githubusercontent.com/buptanswer/python-package-manager/main/package_installer_yulibupt.py
 
 # 或使用curl
-curl -O https://raw.githubusercontent.com/buptanswer/package-installer/main/package_installer_yulibupt.py
+curl -O https://raw.githubusercontent.com/buptanswer/python-package-manager/main/package_installer_yulibupt.py
 ```
 
 ### 方式2：克隆仓库
 ```bash
-git clone https://github.com/buptanswer/package-installer.git
+git clone https://github.com/buptanswer/python-package-manager.git
 cd package-installer
 ```
 
@@ -294,12 +294,12 @@ A: 完全可以！支持命令行参数和自动化脚本。
 
 - 作者：YuliBUPT
 - 邮箱：1404498804@qq.com
-- 项目主页：https://github.com/buptanswer/package-installer
+- 项目主页：https://github.com/buptanswer/python-package-manager
 
 ---
 
 ⭐ 如果这个项目对你有帮助，请给个Star！
 
-🐛 发现Bug？[提交Issue](https://github.com/buptanswer/package-installer/issues)
+🐛 发现Bug？[提交Issue](https://github.com/buptanswer/python-package-manager/issues)
 
-💡 有想法？[参与讨论](https://github.com/buptanswer/package-installer/discussions)
+💡 有想法？[参与讨论](https://github.com/buptanswer/python-package-manager/discussions)
