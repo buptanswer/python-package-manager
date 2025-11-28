@@ -120,6 +120,8 @@ class PackageTracker:
         for package in self.get_third_party_packages():
             if package in self.package_imports:
                 imports = self.package_imports[package]
+                if not imports:  # 安全检查：防止空列表
+                    continue
                 files_count = len(set(imp.file_path for imp in imports))
                 stats[package] = {
                     'files_count': files_count,
@@ -141,74 +143,120 @@ PACKAGE_MAPPING = {
     'OpenSSL': 'pyopenssl',
     'Crypto': 'pycryptodome',
     'dateutil': 'python-dateutil',
+    'MySQLdb': 'mysqlclient',
+    '_mysql': 'mysqlclient',
+    'pkg_resources': 'setuptools',
 }
 
-# Python标准库
-STDLIB = {
-    '__future__', '_thread', 'abc', 'aifc', 'argparse', 'array', 'ast',
-    'asynchat', 'asyncio', 'asyncore', 'atexit', 'audioop', 'base64',
-    'bdb', 'binascii', 'binhex', 'bisect', 'builtins', 'bz2', 'calendar',
-    'cgi', 'cgitb', 'chunk', 'cmath', 'cmd', 'code', 'codecs', 'codeop',
-    'collections', 'colorsys', 'compileall', 'concurrent', 'configparser',
-    'contextlib', 'contextvars', 'copy', 'copyreg', 'cProfile', 'crypt',
-    'csv', 'ctypes', 'curses', 'dataclasses', 'datetime', 'dbm', 'decimal',
-    'difflib', 'dis', 'distutils', 'doctest', 'email', 'encodings', 'enum',
-    'errno', 'faulthandler', 'fcntl', 'filecmp', 'fileinput', 'fnmatch',
-    'formatter', 'fractions', 'ftplib', 'functools', 'gc', 'getopt', 'getpass',
-    'gettext', 'glob', 'graphlib', 'grp', 'gzip', 'hashlib', 'heapq', 'hmac',
-    'html', 'http', 'idlelib', 'imaplib', 'imghdr', 'imp', 'importlib',
-    'inspect', 'io', 'ipaddress', 'itertools', 'json', 'keyword', 'lib2to3',
-    'linecache', 'locale', 'logging', 'lzma', 'mailbox', 'mailcap', 'marshal',
-    'math', 'mimetypes', 'mmap', 'modulefinder', 'msilib', 'msvcrt', 'multiprocessing',
-    'netrc', 'nis', 'nntplib', 'numbers', 'operator', 'optparse', 'os', 'ossaudiodev',
-    'parser', 'pathlib', 'pdb', 'pickle', 'pickletools', 'pipes', 'pkgutil',
-    'platform', 'plistlib', 'poplib', 'posix', 'posixpath', 'pprint', 'profile',
-    'pstats', 'pty', 'pwd', 'py_compile', 'pyclbr', 'pydoc', 'queue', 'quopri',
-    'random', 're', 'readline', 'reprlib', 'resource', 'rlcompleter', 'runpy',
-    'sched', 'secrets', 'select', 'selectors', 'shelve', 'shlex', 'shutil',
-    'signal', 'site', 'smtpd', 'smtplib', 'sndhdr', 'socket', 'socketserver',
-    'spwd', 'sqlite3', 'ssl', 'stat', 'statistics', 'string', 'stringprep',
-    'struct', 'subprocess', 'sunau', 'symbol', 'symtable', 'sys', 'sysconfig',
-    'syslog', 'tabnanny', 'tarfile', 'telnetlib', 'tempfile', 'termios', 'test',
-    'textwrap', 'threading', 'time', 'timeit', 'tkinter', 'token', 'tokenize',
-    'trace', 'traceback', 'tracemalloc', 'tty', 'turtle', 'turtledemo', 'types',
-    'typing', 'unicodedata', 'unittest', 'urllib', 'uu', 'uuid', 'venv',
-    'warnings', 'wave', 'weakref', 'webbrowser', 'winreg', 'winsound', 'wsgiref',
-    'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib',
-    'zoneinfo',
-}
+# Python标准库 - 优先使用运行时检测（Python 3.10+），否则使用硬编码列表
+def _get_stdlib():
+    """获取Python标准库模块集合"""
+    try:
+        # Python 3.10+ 支持
+        if hasattr(sys, 'stdlib_module_names'):
+            return set(sys.stdlib_module_names)
+    except AttributeError:
+        pass
+    
+    # 回退到硬编码列表（兼容旧版本）
+    return {
+        '__future__', '_thread', 'abc', 'aifc', 'argparse', 'array', 'ast',
+        'asynchat', 'asyncio', 'asyncore', 'atexit', 'audioop', 'base64',
+        'bdb', 'binascii', 'binhex', 'bisect', 'builtins', 'bz2', 'calendar',
+        'cgi', 'cgitb', 'chunk', 'cmath', 'cmd', 'code', 'codecs', 'codeop',
+        'collections', 'colorsys', 'compileall', 'concurrent', 'configparser',
+        'contextlib', 'contextvars', 'copy', 'copyreg', 'cProfile', 'crypt',
+        'csv', 'ctypes', 'curses', 'dataclasses', 'datetime', 'dbm', 'decimal',
+        'difflib', 'dis', 'distutils', 'doctest', 'email', 'encodings', 'enum',
+        'errno', 'faulthandler', 'fcntl', 'filecmp', 'fileinput', 'fnmatch',
+        'formatter', 'fractions', 'ftplib', 'functools', 'gc', 'getopt', 'getpass',
+        'gettext', 'glob', 'graphlib', 'grp', 'gzip', 'hashlib', 'heapq', 'hmac',
+        'html', 'http', 'idlelib', 'imaplib', 'imghdr', 'imp', 'importlib',
+        'inspect', 'io', 'ipaddress', 'itertools', 'json', 'keyword', 'lib2to3',
+        'linecache', 'locale', 'logging', 'lzma', 'mailbox', 'mailcap', 'marshal',
+        'math', 'mimetypes', 'mmap', 'modulefinder', 'msilib', 'msvcrt', 'multiprocessing',
+        'netrc', 'nis', 'nntplib', 'numbers', 'operator', 'optparse', 'os', 'ossaudiodev',
+        'parser', 'pathlib', 'pdb', 'pickle', 'pickletools', 'pipes', 'pkgutil',
+        'platform', 'plistlib', 'poplib', 'posix', 'posixpath', 'pprint', 'profile',
+        'pstats', 'pty', 'pwd', 'py_compile', 'pyclbr', 'pydoc', 'queue', 'quopri',
+        'random', 're', 'readline', 'reprlib', 'resource', 'rlcompleter', 'runpy',
+        'sched', 'secrets', 'select', 'selectors', 'shelve', 'shlex', 'shutil',
+        'signal', 'site', 'smtpd', 'smtplib', 'sndhdr', 'socket', 'socketserver',
+        'spwd', 'sqlite3', 'ssl', 'stat', 'statistics', 'string', 'stringprep',
+        'struct', 'subprocess', 'sunau', 'symbol', 'symtable', 'sys', 'sysconfig',
+        'syslog', 'tabnanny', 'tarfile', 'telnetlib', 'tempfile', 'termios', 'test',
+        'textwrap', 'threading', 'time', 'timeit', 'tkinter', 'token', 'tokenize',
+        'trace', 'traceback', 'tracemalloc', 'tty', 'turtle', 'turtledemo', 'types',
+        'typing', 'unicodedata', 'unittest', 'urllib', 'uu', 'uuid', 'venv',
+        'warnings', 'wave', 'weakref', 'webbrowser', 'winreg', 'winsound', 'wsgiref',
+        'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib',
+        'zoneinfo',
+    }
+
+STDLIB = _get_stdlib()
 
 
 def scan_python_files(root_path: str, scan_subdirs: bool = True) -> List[Path]:
     """扫描指定路径下的所有Python文件"""
-    root = Path(root_path)
-    py_files = []
-    
-    if scan_subdirs:
-        for path in root.rglob("*.py"):
-            # 检查是否在排除的目录中
-            if any(excluded in path.parts for excluded in EXCLUDE_DIRS):
-                continue
-            # 检查是否是排除的文件(精确匹配)
-            if path.name in EXCLUDE_FILES:
-                continue
-            # 检查是否匹配排除模式(模糊匹配)
-            if any(pattern in path.name.lower() for pattern in EXCLUDE_FILE_PATTERNS):
-                continue
-            py_files.append(path)
-    else:
-        for path in root.glob("*.py"):
-            if path.name in EXCLUDE_FILES:
-                continue
-            if any(pattern in path.name.lower() for pattern in EXCLUDE_FILE_PATTERNS):
-                continue
-            py_files.append(path)
-    
-    return sorted(py_files)
+    try:
+        root = Path(root_path)
+        if not root.exists():
+            print_colored(f"   ⚠️  路径不存在: {root_path}", "yellow")
+            return []
+        
+        if not root.is_dir():
+            print_colored(f"   ⚠️  路径不是目录: {root_path}", "yellow")
+            return []
+        
+        py_files = []
+        
+        if scan_subdirs:
+            for path in root.rglob("*.py"):
+                try:
+                    # 检查是否在排除的目录中（精确匹配路径部分）
+                    if any(excluded in path.parts for excluded in EXCLUDE_DIRS):
+                        continue
+                    # 检查是否是排除的文件(精确匹配)
+                    if path.name in EXCLUDE_FILES:
+                        continue
+                    # 检查是否匹配排除模式(模糊匹配)
+                    if any(pattern in path.name.lower() for pattern in EXCLUDE_FILE_PATTERNS):
+                        continue
+                    py_files.append(path)
+                except (PermissionError, OSError):
+                    # 跳过无权限访问的文件
+                    continue
+        else:
+            for path in root.glob("*.py"):
+                try:
+                    if path.name in EXCLUDE_FILES:
+                        continue
+                    if any(pattern in path.name.lower() for pattern in EXCLUDE_FILE_PATTERNS):
+                        continue
+                    py_files.append(path)
+                except (PermissionError, OSError):
+                    continue
+        
+        return sorted(py_files)
+    except Exception as e:
+        print_colored(f"   ⚠️  扫描路径时出错: {e}", "yellow")
+        return []
 
 
 def read_file_safely(file_path: Path) -> str:
     """安全读取文件内容"""
+    try:
+        if not file_path.exists():
+            print_colored(f"   ⚠️  文件不存在: {file_path}", "yellow")
+            return ""
+        
+        if not file_path.is_file():
+            print_colored(f"   ⚠️  路径不是文件: {file_path}", "yellow")
+            return ""
+    except (PermissionError, OSError) as e:
+        print_colored(f"   ⚠️  无法访问文件: {file_path} ({e})", "yellow")
+        return ""
+    
     encodings = ['utf-8', 'gbk', 'gb2312', 'latin-1']
     
     for encoding in encodings:
@@ -217,9 +265,12 @@ def read_file_safely(file_path: Path) -> str:
                 return f.read()
         except (UnicodeDecodeError, UnicodeError):
             continue
+        except (PermissionError, OSError) as e:
+            print_colored(f"   ⚠️  无法读取文件: {file_path} ({e})", "yellow")
+            return ""
     
     # 如果所有编码都失败,返回空字符串
-    print_colored(f"   ⚠️  无法读取文件: {file_path}", "yellow")
+    print_colored(f"   ⚠️  无法读取文件（编码问题）: {file_path}", "yellow")
     return ""
 
 
@@ -276,29 +327,79 @@ def extract_imports_from_code(code_text: str) -> Set[str]:
 def extract_imports_with_details(code_text: str, file_path: Path) -> List[ImportInfo]:
     """
     智能提取代码中的所有import语句，包含详细信息
+    支持多行import语句（使用括号）
     返回: ImportInfo对象列表
     """
     imports = []
     lines = code_text.split('\n')
+    i = 0
     
-    for line_num, line in enumerate(lines, 1):
+    while i < len(lines):
+        line = lines[i]
         original_line = line
+        line_num = i + 1
+        
         # 移除行末注释但保留字符串中的内容
         line_without_comment = re.sub(r'#.*$', '', line).strip()
         
         if not line_without_comment:
+            i += 1
             continue
         
         # 检查行是否包含有效的import语句（不在字符串中）
         # 简单的检查：如果行中引号数量为奇数，则可能包含未闭合的字符串
         # 这种情况下跳过该行，避免误匹配
         if line_without_comment.count('"') % 2 != 0 or line_without_comment.count("'") % 2 != 0:
+            i += 1
             continue
+        
+        # 处理多行import（以括号开始）
+        multi_line_import = False
+        if '(' in line_without_comment and ('import' in line_without_comment or 'from' in line_without_comment):
+            # 检查是否是import语句且包含括号
+            if re.match(r'^\s*(from|import)', line_without_comment):
+                multi_line_import = True
+        
+        # 匹配 from xxx import yyy 格式（单行或多行）
+        # 先检查是否是from import语句（包括相对导入）
+        from_pattern_match = re.match(r'^\s*from\s+([a-zA-Z_.][a-zA-Z0-9_.]*)\s+import', line_without_comment)
+        if from_pattern_match:
+            package_name_raw = from_pattern_match.group(1)
             
-        # 匹配 from xxx import yyy 格式
-        from_match = re.match(r'^\s*from\s+([a-zA-Z_][a-zA-Z0-9_.]*)\s+import\s+(.+)$', line_without_comment)
-        if from_match:
-            package_name = from_match.group(1).split('.')[0]
+            # 过滤相对导入（以.开头）
+            if package_name_raw.startswith('.'):
+                i += 1
+                continue
+            
+            # 处理多行from import
+            if multi_line_import and '(' in line_without_comment:
+                # 收集多行内容，直到找到闭合括号
+                import_parts = [line_without_comment]
+                j = i + 1
+                paren_count = line_without_comment.count('(') - line_without_comment.count(')')
+                max_lines = len(lines)  # 防止无限循环
+                while j < max_lines and paren_count > 0:
+                    next_line = re.sub(r'#.*$', '', lines[j]).strip()
+                    import_parts.append(next_line)
+                    paren_count += next_line.count('(') - next_line.count(')')
+                    j += 1
+                    # 安全限制：如果超过1000行还没闭合，可能是语法错误，停止处理
+                    if j - i > 1000:
+                        break
+                full_import = ' '.join(import_parts)
+                original_line = '\n'.join(lines[i:j])
+                i = j
+            else:
+                full_import = line_without_comment
+                i += 1
+            
+            # 提取包名（取第一部分）
+            package_name = package_name_raw.split('.')[0]
+            
+            # 检查包名是否为空
+            if not package_name or package_name.strip() == '':
+                continue
+            
             pip_package = PACKAGE_MAPPING.get(package_name, package_name)
             
             imports.append(ImportInfo(
@@ -311,24 +412,61 @@ def extract_imports_with_details(code_text: str, file_path: Path) -> List[Import
             ))
             continue
         
-        # 匹配 import xxx 格式
+        # 匹配 import xxx 格式（单行或多行）
         import_match = re.match(r'^\s*import\s+(.+)$', line_without_comment)
         if import_match:
-            imports_str = import_match.group(1)
+            # 处理多行import
+            if multi_line_import and '(' in line_without_comment:
+                # 收集多行内容，直到找到闭合括号
+                import_parts = [line_without_comment]
+                j = i + 1
+                paren_count = line_without_comment.count('(') - line_without_comment.count(')')
+                max_lines = len(lines)  # 防止无限循环
+                while j < max_lines and paren_count > 0:
+                    next_line = re.sub(r'#.*$', '', lines[j]).strip()
+                    import_parts.append(next_line)
+                    paren_count += next_line.count('(') - next_line.count(')')
+                    j += 1
+                    # 安全限制：如果超过1000行还没闭合，可能是语法错误，停止处理
+                    if j - i > 1000:
+                        break
+                full_import = ' '.join(import_parts)
+                original_line = '\n'.join(lines[i:j])
+                imports_str = re.match(r'^\s*import\s+(.+)$', full_import)
+                if imports_str:
+                    imports_str = imports_str.group(1)
+                else:
+                    imports_str = import_match.group(1)
+                i = j
+            else:
+                imports_str = import_match.group(1)
+                i += 1
+            
+            # 清理imports_str（移除括号和换行）
+            imports_str = re.sub(r'[()]', '', imports_str)
             for item in imports_str.split(','):
                 item = item.strip()
+                if not item:
+                    continue
                 package_name = item.split(' as ')[0].strip().split('.')[0]
-                if package_name:
-                    pip_package = PACKAGE_MAPPING.get(package_name, package_name)
-                    
-                    imports.append(ImportInfo(
-                        package_name=package_name,
-                        import_type='import',
-                        import_statement=original_line.strip(),
-                        line_number=line_num,
-                        file_path=file_path,
-                        pip_package=pip_package
-                    ))
+                
+                # 检查包名是否为空
+                if not package_name or package_name.strip() == '':
+                    continue
+                
+                pip_package = PACKAGE_MAPPING.get(package_name, package_name)
+                
+                imports.append(ImportInfo(
+                    package_name=package_name,
+                    import_type='import',
+                    import_statement=original_line.strip(),
+                    line_number=line_num,
+                    file_path=file_path,
+                    pip_package=pip_package
+                ))
+            continue
+        
+        i += 1
     
     return imports
 
@@ -352,13 +490,36 @@ def generate_requirements(packages: Dict[str, str], user_packages: Set[str], out
     return user_requirements
 
 
-def backup_existing_requirements(requirements_file: str):
-    """备份现有的requirements.txt文件"""
-    if Path(requirements_file).exists():
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_name = f"{requirements_file}.backup_{timestamp}"
-        shutil.copy2(requirements_file, backup_name)
-        print_colored(f"   📋 已备份现有文件: {backup_name}", "cyan")
+def backup_existing_requirements(requirements_file: str, max_backups: int = 5):
+    """
+    备份现有的requirements.txt文件
+    只保留最近max_backups个备份，删除旧的备份文件
+    """
+    req_path = Path(requirements_file)
+    if not req_path.exists():
+        return
+    
+    # 创建备份
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_name = f"{requirements_file}.backup_{timestamp}"
+    shutil.copy2(requirements_file, backup_name)
+    print_colored(f"   📋 已备份现有文件: {backup_name}", "cyan")
+    
+    # 清理旧备份
+    try:
+        backup_pattern = f"{Path(requirements_file).name}.backup_*"
+        backup_files = sorted(Path(requirements_file).parent.glob(backup_pattern), 
+                             key=lambda p: p.stat().st_mtime, reverse=True)
+        
+        # 删除超出限制的旧备份
+        if len(backup_files) > max_backups:
+            for old_backup in backup_files[max_backups:]:
+                try:
+                    old_backup.unlink()
+                except Exception:
+                    pass  # 忽略删除失败
+    except Exception:
+        pass  # 忽略清理失败
 
 
 def generate_enhanced_requirements(tracker: PackageTracker,
@@ -394,7 +555,7 @@ def generate_enhanced_requirements(tracker: PackageTracker,
 def write_file_header(f, project_name: Optional[str], package_count: int, tracker: PackageTracker):
     """写入文件头部信息"""
     total_imports = sum(len(imports) for imports in tracker.package_imports.values()
-                       if imports[0].package_name in tracker.get_third_party_packages())
+                       if imports and imports[0].package_name in tracker.get_third_party_packages())
     total_files = len([fp for fp in tracker.file_imports.keys()
                       if any(imp.package_name in tracker.get_third_party_packages()
                             for imp in tracker.file_imports[fp])])
@@ -436,6 +597,8 @@ def write_detailed_package_info(f, packages: Set[str], tracker: PackageTracker):
             continue
             
         imports = tracker.package_imports[package]
+        if not imports:  # 安全检查：防止空列表
+            continue
         pip_package = imports[0].pip_package
         
         # 包标题
@@ -508,7 +671,20 @@ def install_package(package_name: str, pip_package: str) -> Tuple[bool, str]:
             else:
                 return False, "安装成功但验证失败"
         else:
-            error_msg = result.stderr.strip().split('\n')[-1] if result.stderr else "未知错误"
+            # 改进错误处理：提取关键错误信息，保留更多上下文
+            error_lines = result.stderr.strip().split('\n') if result.stderr else []
+            if error_lines:
+                # 优先查找ERROR/WARNING等关键词所在的行
+                error_msg = None
+                for line in reversed(error_lines):
+                    if any(keyword in line.upper() for keyword in ['ERROR', 'FAILED', 'EXCEPTION', 'WARNING']):
+                        error_msg = line.strip()
+                        break
+                # 如果没有找到关键词，使用最后几行
+                if not error_msg:
+                    error_msg = '\n'.join(error_lines[-3:]).strip()
+            else:
+                error_msg = "未知错误（无错误输出）"
             return False, f"安装失败: {error_msg}"
             
     except subprocess.TimeoutExpired:
@@ -637,7 +813,11 @@ def scan_and_install(scan_path: Optional[str] = None, scan_subdirs: bool = True,
         safe_print("\n   文件详情:")
         for file_path in sorted(tracker.file_imports.keys()):
             imports = tracker.file_imports[file_path]
-            rel_path = file_path.relative_to(scan_path)
+            try:
+                rel_path = file_path.relative_to(scan_path)
+            except ValueError:
+                # 如果文件不在扫描路径下，使用绝对路径
+                rel_path = file_path
             safe_print(f"     • {rel_path}: {len(imports)} 个导入语句")
     
     # 步骤3: 过滤标准库

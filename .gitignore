@@ -33,11 +33,15 @@ env/
 *.swo
 *~
 
-# Project specific
-news.db
+# Project specific - 备份文件
 *.backup_*
-wordcloud.png
-time_dist.png
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
 
 # OS
 .DS_Store
@@ -45,3 +49,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Temporary files
+*.tmp
+*.temp
+test_temp.py

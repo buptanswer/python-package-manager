@@ -1,4 +1,4 @@
-# GitHub 仓库上传信息
+# GitHub 仓库信息
 
 ## 📦 仓库基本信息
 
@@ -14,7 +14,7 @@ python-package-manager
 
 ### 网站（Website）
 ```
-https://github.com/你的用户名/python-package-manager
+https://github.com/buptanswer/python-package-manager
 ```
 
 ### 主题标签（Topics）
@@ -34,6 +34,8 @@ package-installer
 python-development
 code-analysis
 project-management
+testing
+unittest
 ```
 
 ---
@@ -42,12 +44,11 @@ project-management
 
 ### 1. 仓库可见性
 - ✅ **Public** (推荐) - 开源项目，方便他人使用
-- ⚪ Private - 如果需要保密
 
 ### 2. 初始化选项
 - ✅ Add a README file (已有README.md)
-- ✅ Add .gitignore (选择Python模板)
-- ✅ Choose a license (推荐MIT License)
+- ✅ Add .gitignore (已有.gitignore)
+- ✅ Choose a license (已有MIT License)
 
 ### 3. 分支保护
 - 主分支名称：`main`
@@ -55,127 +56,7 @@ project-management
 
 ---
 
-## 📋 .gitignore 内容
-
-创建 `.gitignore` 文件，内容如下：
-
-```gitignore
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
-.venv/
-venv/
-ENV/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Project specific
-news.db
-*.backup_*
-wordcloud.png
-time_dist.png
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-```
-
----
-
-## 📄 LICENSE 文件
-
-创建 `LICENSE` 文件（MIT License）：
-
-```
-MIT License
-
-Copyright (c) 2025 YuliBUPT
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-## 🚀 Git 命令（按顺序执行）
-
-### 1. 初始化本地仓库
-```bash
-git init
-```
-
-### 2. 添加所有文件
-```bash
-git add .
-```
-
-### 3. 首次提交
-```bash
-git commit -m "🎉 Initial commit: Python智能包管理工具 v2.0"
-```
-
-### 4. 创建主分支
-```bash
-git branch -M main
-```
-
-### 5. 关联远程仓库（替换为你的仓库地址）
-```bash
-git remote add origin https://github.com/你的用户名/python-package-manager.git
-```
-
-### 6. 推送到GitHub
-```bash
-git push -u origin main
-```
-
----
-
-## 📊 推荐的仓库结构
+## 📋 项目结构
 
 ```
 python-package-manager/
@@ -183,17 +64,16 @@ python-package-manager/
 ├── LICENSE                            # MIT许可证
 ├── .gitignore                         # Git忽略文件
 ├── requirements.txt                   # 项目依赖
-├── package_installer_yulibupt.py      # 主程序
-├── news_crawler.py                    # 示例项目
-├── GITHUB_INFO.md                     # 本文件（上传后可删除）
-├── docs/                              # 文档目录（可选）
-│   ├── usage.md                       # 使用指南
-│   ├── api.md                         # API文档
-│   └── examples.md                    # 示例集合
-└── examples/                          # 示例目录（可选）
-    └── news_crawler/                  # 新闻爬虫示例
-        ├── news_crawler.py
-        └── README.md
+├── package_installer_yulibupt.py      # 主程序（1091行）
+├── run_tests.py                       # 测试运行器
+├── tests/                             # 测试套件
+│   ├── __init__.py
+│   ├── test_import_extraction.py      # Import提取测试（17个测试）
+│   ├── test_file_operations.py        # 文件操作测试（8个测试）
+│   ├── test_package_tracker.py        # 包追踪测试（5个测试）
+│   ├── test_requirements_generation.py # Requirements生成测试（3个测试）
+│   └── test_integration.py            # 集成测试（2个测试）
+└── GITHUB_INFO.md                     # 本文件（上传后可删除）
 ```
 
 ---
@@ -202,8 +82,8 @@ python-package-manager/
 
 ### About 部分
 - **Description**: 🚀 智能Python项目依赖管理工具 - 自动扫描、智能分析、详细追踪
-- **Website**: 你的项目主页或文档链接
-- **Topics**: python, package-manager, dependency-management, automation, devtools
+- **Website**: https://github.com/buptanswer/python-package-manager
+- **Topics**: python, package-manager, dependency-management, automation, devtools, testing
 
 ### README Badges（徽章）
 在README.md顶部已包含：
@@ -211,22 +91,18 @@ python-package-manager/
 - License徽章
 - Code Style徽章
 
-### 社交预览图（可选）
-- 尺寸：1280x640px
-- 内容：项目Logo + 标题 + 核心特性
-
 ---
 
-## 📢 发布第一个Release
+## 📢 发布Release
 
 ### 创建Release步骤：
 1. 进入仓库页面
 2. 点击 "Releases" → "Create a new release"
 3. 填写信息：
 
-**Tag version**: `v2.0.0`
+**Tag version**: `v2.1.0`
 
-**Release title**: `🎉 v2.0.0 - 增强版Python智能包管理工具`
+**Release title**: `🎉 v2.1.0 - 增强版Python智能包管理工具`
 
 **Description**:
 ```markdown
@@ -234,14 +110,16 @@ python-package-manager/
 
 ### 🔍 智能扫描
 - 自动发现项目中所有Python文件
-- 精确提取import语句
+- 精确提取import语句（支持多行import）
 - 行号追踪和文件路径记录
+- 相对导入自动过滤
 
 ### 📦 依赖管理
-- 标准库自动识别
+- 运行时标准库检测（Python 3.10+兼容）
 - 智能包名映射
 - 依赖统计分析
 - 一键安装缺失包
+- 安装后自动验证
 
 ### 📋 详细文档
 - 增强版requirements.txt
@@ -249,15 +127,29 @@ python-package-manager/
 - 详细来源信息
 - 项目级别概览
 
+### 🛡️ 安全可靠
+- 自动备份机制（保留最近5个备份）
+- 多编码支持
+- 完善的错误处理
+- 跨平台兼容
+
+### 🧪 测试覆盖
+- 35个单元测试
+- 完整测试套件
+- 集成测试
+- 边界情况测试
+
 ## 📥 安装
 
+直接下载：
 ```bash
-pip install package-installer-yulibupt
+wget https://raw.githubusercontent.com/buptanswer/python-package-manager/main/package_installer_yulibupt.py
 ```
 
-或直接下载：
+或克隆仓库：
 ```bash
-wget https://github.com/你的用户名/python-package-manager/releases/download/v2.0.0/package_installer_yulibupt.py
+git clone https://github.com/buptanswer/python-package-manager.git
+cd python-package-manager
 ```
 
 ## 🚀 快速开始
@@ -268,21 +160,63 @@ python package_installer_yulibupt.py
 
 ## 📝 更新内容
 
-- ✨ 新增详细的包来源日志记录
-- 🔍 精确的行号和文件路径追踪
-- 📊 项目依赖使用统计
-- 🔄 智能覆盖和备份策略
-- 👥 版本控制友好的格式
+### v2.1.0 新功能
+- ✨ 新增多行import语句完整支持（使用括号）
+- ✨ 新增相对导入自动过滤
+- ✨ 改进标准库检测（运行时检测，兼容旧版本）
+- ✨ 新增备份文件自动清理机制
+- ✨ 改进错误处理和边界情况处理
+- ✨ 新增完整测试套件（35个测试）
 
-## 🐛 Bug修复
+### 🐛 Bug修复
+- 修复Windows编码问题
+- 修复文件路径处理异常
+- 修复索引越界问题
+- 修复无限循环防护
+- 改进错误信息提取
 
-- 修复了Windows编码问题
-- 改进了文件扫描性能
-- 优化了错误处理机制
+## 🧪 测试
+
+运行测试套件：
+```bash
+python run_tests.py
+```
+
+所有35个测试均通过 ✅
 
 ---
 
-**完整更新日志**: https://github.com/你的用户名/python-package-manager/compare/v1.0.0...v2.0.0
+**完整更新日志**: https://github.com/buptanswer/python-package-manager/compare/v2.0.0...v2.1.0
+```
+
+---
+
+## 🚀 Git 命令（更新现有仓库）
+
+### 1. 检查当前状态
+```bash
+git status
+```
+
+### 2. 添加所有更改
+```bash
+git add .
+```
+
+### 3. 提交更改
+```bash
+git commit -m "🎉 v2.1.0: 新增多行import支持、测试套件和完善的错误处理"
+```
+
+### 4. 推送到GitHub
+```bash
+git push origin main
+```
+
+### 5. 创建标签（可选）
+```bash
+git tag -a v2.1.0 -m "v2.1.0: 增强版Python智能包管理工具"
+git push origin v2.1.0
 ```
 
 ---
@@ -297,7 +231,7 @@ python package_installer_yulibupt.py
 ### 2. 技术社区
 - 提交到awesome-python列表
 - 在Python Weekly投稿
-- 在PyPI发布包
+- 在PyPI发布包（未来计划）
 
 ### 3. 文档完善
 - 添加更多使用示例
@@ -306,37 +240,28 @@ python package_installer_yulibupt.py
 
 ---
 
-## 📧 联系信息更新
-
-记得在README.md中更新：
-- 你的GitHub用户名
-- 你的邮箱地址
-- 项目实际URL
-
----
-
 ## ✅ 上传前检查清单
 
-- [ ] 已创建.gitignore文件
-- [ ] 已添加LICENSE文件
-- [ ] README.md中的链接已更新
-- [ ] 已删除敏感信息
-- [ ] 代码已测试通过
-- [ ] 文档已完善
-- [ ] requirements.txt已生成
-- [ ] 示例代码可运行
+- [x] 已创建.gitignore文件
+- [x] 已添加LICENSE文件
+- [x] README.md已更新
+- [x] 已删除测试用例文件（news_crawler.py）
+- [x] 代码已测试通过（35个测试全部通过）
+- [x] 文档已完善
+- [x] requirements.txt已生成
+- [x] 测试套件完整
 
 ---
 
 ## 🎉 完成后
 
 上传成功后，你可以：
-1. 在GitHub仓库页面添加描述和主题
-2. 创建第一个Release
-3. 启用GitHub Pages（如果需要文档站点）
-4. 设置GitHub Actions（自动化测试）
-5. 邀请贡献者
-6. 开始推广项目
+1. ✅ 在GitHub仓库页面添加描述和主题
+2. ✅ 创建v2.1.0 Release
+3. ⚪ 启用GitHub Actions（自动化测试，可选）
+4. ⚪ 启用GitHub Pages（如果需要文档站点，可选）
+5. ⚪ 邀请贡献者
+6. ⚪ 开始推广项目
 
 ---
 
