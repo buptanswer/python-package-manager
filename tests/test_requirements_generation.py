@@ -264,6 +264,65 @@ class TestGenerateEnhancedRequirements(unittest.TestCase):
         content = self.requirements_file.read_text(encoding='utf-8')
         self.assertIn("import(s)", content)
 
+    def test_exclude_local_packages(self):
+        """测试排除本地模块"""
+        self._add_import("requests")
+        self._add_import("LocalModule")
+        
+        generate_enhanced_requirements(
+            self.tracker,
+            str(self.requirements_file),
+            "test_project",
+            failed_packages=set(),
+            failed_pip_packages=set(),
+            local_packages={"LocalModule"}
+        )
+        
+        content = self.requirements_file.read_text(encoding='utf-8')
+        
+        # 应该包含第三方包
+        self.assertIn("requests", content)
+        
+        # 应该包含LOCAL MODULES部分
+        self.assertIn("LOCAL MODULES", content)
+        self.assertIn("LocalModule", content)
+        
+        # LocalModule不应该在包列表中（作为pip包）
+        package_section = content.split("LOCAL MODULES")[0] if "LOCAL MODULES" in content else content
+        lines = package_section.split('\n')
+        package_lines = [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
+        self.assertNotIn("LocalModule", package_lines)
+
+    def test_local_packages_not_in_failed_section(self):
+        """测试本地模块不出现在失败部分"""
+        self._add_import("requests")
+        self._add_import("LocalModule")
+        self._add_import("FailedPackage")
+        
+        generate_enhanced_requirements(
+            self.tracker,
+            str(self.requirements_file),
+            "test_project",
+            failed_packages={"FailedPackage"},
+            failed_pip_packages=set(),
+            local_packages={"LocalModule"}
+        )
+        
+        content = self.requirements_file.read_text(encoding='utf-8')
+        
+        # 检查LOCAL MODULES部分
+        if "LOCAL MODULES" in content:
+            local_section = content.split("LOCAL MODULES")[1].split("INSTALLATION FAILED")[0] if "INSTALLATION FAILED" in content else content.split("LOCAL MODULES")[1]
+            self.assertIn("LocalModule", local_section)
+            self.assertIn("Local module", local_section)
+        
+        # 检查INSTALLATION FAILED部分
+        if "INSTALLATION FAILED" in content:
+            failed_section = content.split("INSTALLATION FAILED")[1]
+            self.assertIn("FailedPackage", failed_section)
+            # LocalModule不应该在失败部分
+            self.assertNotIn("LocalModule", failed_section)
+
 
 class TestBackupExistingRequirements(unittest.TestCase):
     """测试备份功能"""

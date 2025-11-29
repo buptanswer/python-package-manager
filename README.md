@@ -2,7 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-168%20passed-brightgreen.svg)](run_tests.py)
+[![Tests](https://img.shields.io/badge/tests-208%20passed-brightgreen.svg)](run_tests.py)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 一个强大的Python项目依赖管理工具，能够自动扫描项目中的所有Python文件，智能提取导入语句，并生成详细的依赖文档。
@@ -16,6 +16,7 @@
 - **行号追踪**：记录每个导入语句的精确位置（文件名+行号）
 - **智能过滤**：自动排除虚拟环境、缓存目录等无关文件
 - **相对导入过滤**：自动过滤相对导入，只识别第三方包
+- **本地模块检测**：自动识别项目中的本地模块，避免误安装不相关的PyPI包
 
 ### 📦 依赖管理
 - **标准库识别**：运行时自动检测标准库（Python 3.10+），兼容旧版本
@@ -24,6 +25,7 @@
 - **自动安装**：一键安装所有缺失的第三方包
 - **安装验证**：安装后自动验证包是否可用
 - **特殊包处理**：支持pywin32等需要特殊处理的包
+- **本地模块保护**：自动检测并跳过本地模块，防止误安装不相关的PyPI包
 
 ### 📋 详细文档
 - **增强版requirements.txt**：不仅列出包名，还包含：
@@ -40,8 +42,8 @@
 - **边界情况处理**：完善的错误处理和边界情况处理
 
 ### 🧪 测试覆盖
-- **完整测试套件**：168个单元测试，覆盖所有核心功能
-- **7个测试模块**：Import提取、文件操作、包追踪、包名映射、特殊处理、Requirements生成、集成测试
+- **完整测试套件**：208个单元测试，覆盖所有核心功能
+- **8个测试模块**：Import提取、文件操作、包追踪、包名映射、特殊处理、Requirements生成、本地模块、集成测试
 - **边界测试**：测试各种边界情况和异常处理
 
 ## 📥 安装
@@ -318,14 +320,15 @@ python run_tests.py -v
 
 项目包含完整的测试套件：
 
-- **168个单元测试**：覆盖所有核心功能
+- **208个单元测试**：覆盖所有核心功能
 - **测试模块**：
   - `test_import_extraction.py` - Import提取测试（32个测试）
   - `test_file_operations.py` - 文件操作测试（22个测试）
   - `test_package_tracker.py` - 包追踪器测试（17个测试）
   - `test_package_mapping.py` - 包名映射测试（36个测试）
-  - `test_special_handling.py` - 特殊包处理测试（20个测试）
-  - `test_requirements_generation.py` - Requirements生成测试（24个测试）
+  - `test_special_handling.py` - 特殊包处理测试（43个测试）
+  - `test_requirements_generation.py` - Requirements生成测试（26个测试）
+  - `test_local_modules.py` - 本地模块测试（18个测试）
   - `test_integration.py` - 集成测试（17个测试）
 
 运行测试：
@@ -344,6 +347,17 @@ python run_tests.py
 5. 开启Pull Request
 
 ## 📝 更新日志
+
+### v2.3.0 (2025-11-30)
+- ✨ **重要安全修复**：新增本地模块检测功能，防止误安装不相关的PyPI包
+- ✨ 本地模块在requirements.txt中单独列出，不标记为安装失败
+- ✨ 新增导入失败诊断功能，智能检测大小写不匹配等问题
+- ✨ 新增参数验证，提高代码健壮性
+- 🐛 修复本地模块被错误标记为"安装失败"的问题
+- 🐛 修复安装统计数字不准确的问题
+- 🐛 修复备份文件排序时的异常处理
+- 🐛 修复`get_installed_package_info`的stdout空值检查
+- 🧪 新增18个测试，测试套件从168个增至208个测试
 
 ### v2.2.0 (2025-11-29)
 - ✨ 新增特殊包处理机制（支持pywin32等）
@@ -399,6 +413,16 @@ A: 不会。工具会自动过滤相对导入（以`.`开头的导入），只�
 
 ### Q: pywin32安装后显示"需重启Python后可导入"是什么意思？
 A: pywin32是特殊包，安装后需要重启Python进程才能导入使用。工具会自动使用`pip show`验证安装成功，您只需重启Python即可正常使用。
+
+### Q: 工具会误安装本地模块对应的PyPI包吗？
+A: 不会。v2.3.0版本新增了本地模块检测功能，工具会自动识别项目目录中的`.py`文件或包目录，跳过安装并单独列出。这避免了误安装不相关的PyPI包污染环境。
+
+### Q: 如果遇到"安装成功但验证失败"怎么办？
+A: 工具现在会提供详细的诊断信息，包括：
+- 是否是大小写不匹配问题
+- 是否是本地模块
+- 是否需要添加包名映射
+根据提示信息进行相应处理即可。
 
 ## 📄 许可证
 

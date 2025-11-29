@@ -36,6 +36,7 @@ def run_all_tests(verbosity=2):
         'tests.test_package_mapping',        # 包名映射测试
         'tests.test_special_handling',       # 特殊包处理测试
         'tests.test_requirements_generation', # Requirements生成测试
+        'tests.test_local_modules',          # 本地模块测试（新增）
         'tests.test_integration',            # 集成测试
     ]
     

@@ -1,53 +1,147 @@
-## 🎉 v2.2.0 - 增强版Python智能包管理工具
+## 🎉 v2.3.0 - 重要安全修复：本地模块检测
+
+### 🛡️ 重要安全修复
+
+#### 本地模块检测功能
+- **问题背景**：之前的版本无法区分本地模块和第三方包，可能导致误安装不相关的PyPI包
+  - 例如：项目中存在本地模块`BA.py`，工具可能误安装PyPI上的`ba`包
+  - 这会导致requirements文件被污染，pip环境被搞乱，甚至影响程序运行
+  
+- **解决方案**：新增`check_local_module_exists`函数
+  - 自动识别项目目录中的`.py`文件或包目录（包含`__init__.py`的目录）
+  - 在安装流程中，本地模块会被单独列出并跳过安装
+  - 本地模块在requirements.txt中单独列出，不会出现在"INSTALLATION FAILED PACKAGES"部分
+
+#### 导入失败诊断功能
+- **新增`diagnose_import_failure`函数**：智能诊断导入失败的原因
+  - 检测大小写不匹配问题（如`import BA`但安装了`ba`包）
+  - 检测已安装包的模块名与导入名不一致的情况
+  - 提供详细的错误信息和解决建议
 
 ### ✨ 主要新功能
 
-#### 🔧 特殊包处理机制
-- **pywin32支持**：新增对pywin32等特殊包的安装验证支持
-  - pywin32安装后需要重启Python进程才能导入
-  - 新增`pip show`验证方式，无需重启即可确认安装成功
-  - 显示友好提示信息："安装成功（需重启Python后可导入）"
+#### 🔍 本地模块检测
+```python
+# 自动检测本地模块
+check_local_module_exists(module_name: str, search_paths: List[Path]) -> Optional[Path]
+```
+- 支持检测`.py`文件（如`BA.py`）
+- 支持检测包目录（如`BA/__init__.py`）
+- 自动处理权限错误和文件系统异常
 
-- **特殊配置系统**：`PACKAGE_SPECIAL_HANDLING`配置
-  ```python
-  PACKAGE_SPECIAL_HANDLING = {
-      'pywin32': {
-          'post_install_script': 'pywin32_postinstall',
-          'post_install_args': ['-install'],
-          'skip_import_verify': True,  # 使用pip show验证
-      },
-  }
-  ```
+#### 🩺 导入失败诊断
+```python
+# 智能诊断导入失败
+diagnose_import_failure(expected_module: str, pip_package: str) -> Tuple[str, Optional[str]]
+```
+- 检测大小写不匹配
+- 检测模块名差异
+- 提供详细的错误信息
 
-#### 🧪 全新测试套件
-- **168个单元测试**，覆盖所有核心功能
-- **7个测试模块**：
-  - `test_import_extraction.py` - Import提取测试（32个测试）
-  - `test_file_operations.py` - 文件操作测试（22个测试）
-  - `test_package_tracker.py` - 包追踪器测试（17个测试）
-  - `test_package_mapping.py` - 包名映射测试（36个测试）
-  - `test_special_handling.py` - 特殊包处理测试（20个测试）
-  - `test_requirements_generation.py` - Requirements生成测试（24个测试）
-  - `test_integration.py` - 集成测试（17个测试）
+#### 📊 已安装包信息获取
+```python
+# 获取已安装包的详细信息
+get_installed_package_info(pip_package: str) -> Optional[Dict[str, str]]
+```
+- 使用`pip show`获取包信息
+- 包含版本、位置、依赖等详细信息
 
 ### 🐛 Bug修复
 
-- **pywin32验证问题**：修复安装成功但验证失败的问题
-- **文件数统计**：修复`write_dependency_overview`文件计数不准确
-- **统计一致性**：修复安装统计中模块名与包名计数不一致问题
-- **注释错误**：修复`generate_package_name_variants`中的示例注释
+- **修复本地模块被错误标记为"安装失败"**
+  - 之前：本地模块会出现在"INSTALLATION FAILED PACKAGES"部分
+  - 现在：本地模块单独列出在"LOCAL MODULES"部分
 
-### 🗑️ 代码清理
+- **修复安装统计数字不准确**
+  - 之前：本地模块被计入第三方包总数
+  - 现在：本地模块和第三方包分开统计
 
-- 移除未使用的`process_installation`函数
-- 移除未使用的`generate_requirements`函数
-- 移除冗余变量，提升代码整洁度
+- **修复备份文件排序时的异常处理**
+  - 之前：如果备份文件在排序时被删除，会抛出异常
+  - 现在：使用`safe_get_mtime`函数安全处理文件删除情况
+
+- **修复`get_installed_package_info`的stdout空值检查**
+  - 之前：如果`subprocess.run`返回`None`，会抛出`AttributeError`
+  - 现在：添加空值检查，安全处理
+
+- **修复`check_local_module_exists`缺少异常处理**
+  - 之前：权限错误或文件系统错误会导致程序崩溃
+  - 现在：添加`PermissionError`和`OSError`异常处理
 
 ### ⚡ 改进
 
-- 改进安装统计准确性
-- 大幅增强测试覆盖率（从35个增至168个）
-- 改进代码注释和文档
+- **参数验证增强**：所有关键函数都添加了空值检查
+  - `check_package_installed`、`check_package_installed_via_pip`
+  - `check_local_module_exists`、`diagnose_import_failure`
+  - `get_installed_package_info`、`install_package`
+  - `generate_package_name_variants`、`search_pypi_package`、`get_pip_package_name`
+
+- **安装流程改进**：本地模块和第三方包分开处理
+  - 安装前先检测是否为本地模块
+  - 本地模块跳过安装，单独统计
+
+- **requirements.txt生成改进**：本地模块单独列出
+  - 新增"LOCAL MODULES"部分
+  - 本地模块不会出现在实际的包列表中
+
+- **错误诊断改进**：提供更详细的错误信息和解决建议
+
+### 🧪 测试覆盖
+
+- **新增本地模块测试套件**（`test_local_modules.py`）
+  - 18个新测试，覆盖本地模块检测的各种场景
+  - 测试`.py`文件检测
+  - 测试包目录检测
+  - 测试异常处理
+  - 测试边界情况
+
+- **测试套件扩展**
+  - `test_special_handling.py`：从20个增至43个测试
+  - `test_requirements_generation.py`：从24个增至26个测试
+  - **总计：从168个增至208个测试** ✅
+
+### 📋 使用示例
+
+#### 本地模块检测示例
+```python
+# 项目结构
+project/
+  ├── main.py
+  ├── BA.py          # 本地模块
+  └── utils/
+      └── helper.py
+
+# main.py
+import BA  # 本地模块，不会被误安装为PyPI的ba包
+
+# 工具输出
+[INFO] 检测到本地模块: BA (project/BA.py)
+[SKIP] 跳过本地模块: BA
+```
+
+#### 导入失败诊断示例
+```python
+# 如果遇到大小写不匹配
+import BA  # 但安装了ba包
+
+# 工具输出
+[FAIL] 安装成功但验证失败
+[DIAG] 诊断: 大小写不匹配 - 导入名'BA'与已安装包的模块名'ba'不一致
+[DIAG] 建议: 检查包名映射配置或使用正确的导入名
+```
+
+### 📊 测试覆盖详情
+
+| 测试模块 | 测试数量 | 覆盖内容 |
+|---------|---------|---------|
+| test_import_extraction | 32 | Import提取、多行导入、相对导入过滤 |
+| test_file_operations | 22 | 文件扫描、目录排除、编码处理 |
+| test_package_tracker | 17 | 包追踪、统计、标准库过滤 |
+| test_package_mapping | 36 | 包名映射、变体生成、模式匹配 |
+| test_special_handling | 43 | pywin32处理、pip验证、后处理脚本、本地模块检测、导入诊断 |
+| test_requirements_generation | 26 | 文件生成、备份、失败包处理、本地模块处理 |
+| test_local_modules | 18 | 本地模块检测、异常处理、边界情况 |
+| test_integration | 17 | 完整工作流、复杂场景 |
 
 ---
 
@@ -84,21 +178,7 @@ python package_installer_yulibupt.py /path/to/your/project
 python run_tests.py
 ```
 
-所有168个测试均通过 ✅
-
----
-
-## 📊 测试覆盖
-
-| 测试模块 | 测试数量 | 覆盖内容 |
-|---------|---------|---------|
-| test_import_extraction | 32 | Import提取、多行导入、相对导入过滤 |
-| test_file_operations | 22 | 文件扫描、目录排除、编码处理 |
-| test_package_tracker | 17 | 包追踪、统计、标准库过滤 |
-| test_package_mapping | 36 | 包名映射、变体生成、模式匹配 |
-| test_special_handling | 20 | pywin32处理、pip验证、后处理脚本 |
-| test_requirements_generation | 24 | 文件生成、备份、失败包处理 |
-| test_integration | 17 | 完整工作流、复杂场景 |
+所有208个测试均通过 ✅
 
 ---
 
@@ -116,4 +196,4 @@ python run_tests.py
 
 ---
 
-**完整变更**: https://github.com/buptanswer/python-package-manager/compare/v2.1.0...v2.2.0
+**完整变更**: https://github.com/buptanswer/python-package-manager/compare/v2.2.0...v2.3.0

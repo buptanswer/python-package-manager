@@ -224,6 +224,10 @@ def get_pip_package_name(import_name: str) -> str:
     2. 模式匹配（PACKAGE_PATTERNS）
     3. 默认返回原名称
     """
+    # 安全检查：空字符串或None
+    if not import_name or not import_name.strip():
+        return import_name or ""
+    
     # 首先检查直接映射
     if import_name in PACKAGE_MAPPING:
         return PACKAGE_MAPPING[import_name]
@@ -242,6 +246,10 @@ def generate_package_name_variants(package_name: str) -> List[str]:
     生成包名的常见变体，用于智能查找
     例如：win32clipboard -> ['pywin32', 'win32', 'win32clipboard', 'py-win32']
     """
+    # 安全检查：空字符串或None
+    if not package_name or not package_name.strip():
+        return []
+    
     variants = [package_name]
     
     # 添加py-前缀变体
@@ -283,11 +291,24 @@ def search_pypi_package(module_name: str) -> Optional[str]:
     在PyPI上搜索包名，尝试找到正确的pip包名
     使用PyPI JSON API: https://pypi.org/pypi/{package_name}/json
     """
+    # 安全检查：空字符串或None
+    if not module_name or not module_name.strip():
+        return None
+    
+    # 验证包名只包含安全字符（字母、数字、连字符、下划线、点）
+    # 这是 PEP 508 规定的包名规范
+    if not re.match(r'^[a-zA-Z0-9._-]+$', module_name):
+        return None
+    
     # 尝试直接搜索模块名
     variants = generate_package_name_variants(module_name)
     
+    if not variants:
+        return None
+    
     for variant in variants[:5]:  # 限制尝试次数
         try:
+            # PyPI包名只包含安全字符，不需要URL编码
             url = f"https://pypi.org/pypi/{variant}/json"
             with urllib.request.urlopen(url, timeout=5) as response:
                 data = json.loads(response.read())
@@ -677,8 +698,16 @@ def backup_existing_requirements(requirements_file: str, max_backups: int = 5):
     # 清理旧备份
     try:
         backup_pattern = f"{Path(requirements_file).name}.backup_*"
-        backup_files = sorted(Path(requirements_file).parent.glob(backup_pattern), 
-                             key=lambda p: p.stat().st_mtime, reverse=True)
+        backup_files = list(Path(requirements_file).parent.glob(backup_pattern))
+        
+        # 安全排序：如果文件在排序时被删除，跳过它
+        def safe_get_mtime(p: Path) -> float:
+            try:
+                return p.stat().st_mtime
+            except (OSError, FileNotFoundError):
+                return 0.0  # 如果无法获取时间，放在最后
+        
+        backup_files = sorted(backup_files, key=safe_get_mtime, reverse=True)
         
         # 删除超出限制的旧备份
         if len(backup_files) > max_backups:
@@ -695,7 +724,8 @@ def generate_enhanced_requirements(tracker: PackageTracker,
                                  output_file: str = "requirements.txt",
                                  project_name: Optional[str] = None,
                                  failed_packages: Optional[Set[str]] = None,
-                                 failed_pip_packages: Optional[Set[str]] = None) -> Dict[str, str]:
+                                 failed_pip_packages: Optional[Set[str]] = None,
+                                 local_packages: Optional[Set[str]] = None) -> Dict[str, str]:
     """
     生成增强版requirements.txt，包含详细的来源信息
     
@@ -705,6 +735,7 @@ def generate_enhanced_requirements(tracker: PackageTracker,
         project_name: 项目名称
         failed_packages: 安装失败的包名集合（import名称）
         failed_pip_packages: 安装失败的pip包名集合
+        local_packages: 本地模块包名集合（从requirements中排除但不标记为失败）
     """
     # 备份现有文件
     backup_existing_requirements(output_file)
@@ -713,19 +744,24 @@ def generate_enhanced_requirements(tracker: PackageTracker,
     third_party_packages = tracker.get_third_party_packages()
     package_stats = tracker.get_package_stats()
     
-    # 排除安装失败的包
+    # 排除安装失败的包和本地模块
     if failed_packages is None:
         failed_packages = set()
     if failed_pip_packages is None:
         failed_pip_packages = set()
+    if local_packages is None:
+        local_packages = set()
     
-    # 过滤掉失败的包
+    # 合并需要排除的包（用于过滤）
+    excluded_packages = failed_packages | local_packages
+    
+    # 过滤掉失败的包和本地模块
     successful_packages = set()
     for pkg in third_party_packages:
         if pkg in package_stats:
             pip_pkg = package_stats[pkg]['pip_package']
-            # 如果包名或pip包名在失败列表中，则跳过
-            if pkg not in failed_packages and pip_pkg not in failed_pip_packages:
+            # 如果包名在排除列表中，或pip包名在失败列表中，则跳过
+            if pkg not in excluded_packages and pip_pkg not in failed_pip_packages:
                 successful_packages.add(pkg)
     
     # 确保输出目录存在
@@ -747,6 +783,17 @@ def generate_enhanced_requirements(tracker: PackageTracker,
         
         # === 文件使用统计 ===
         write_file_usage_stats(f, tracker)
+        
+        # === 本地模块信息（如果有） ===
+        if local_packages:
+            f.write("\n# 📁 LOCAL MODULES (excluded from requirements)\n")
+            f.write("# " + "=" * 78 + "\n")
+            f.write("# The following are local modules in your project, not third-party packages:\n")
+            f.write("# " + "-" * 78 + "\n")
+            for pkg in sorted(local_packages):
+                if pkg in package_stats:
+                    f.write(f"# {pkg} - Local module\n")
+            f.write("# " + "=" * 78 + "\n")
         
         # === 失败的包信息（如果有） ===
         if failed_packages or failed_pip_packages:
@@ -908,6 +955,10 @@ def check_package_installed(package_name: str) -> bool:
     检查包是否已安装
     使用更严格的验证：不仅检查模块是否存在，还尝试实际导入
     """
+    # 参数验证
+    if not package_name or not package_name.strip():
+        return False
+    
     try:
         # 首先检查模块规范是否存在
         spec = importlib.util.find_spec(package_name)
@@ -930,6 +981,10 @@ def check_package_installed_via_pip(pip_package: str) -> bool:
     通过pip show命令检查包是否已安装
     用于无法通过import验证的包（如pywin32需要重启进程才能导入）
     """
+    # 参数验证
+    if not pip_package or not pip_package.strip():
+        return False
+    
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "show", pip_package],
@@ -941,6 +996,117 @@ def check_package_installed_via_pip(pip_package: str) -> bool:
         return result.returncode == 0
     except Exception:
         return False
+
+
+def get_installed_package_info(pip_package: str) -> Optional[Dict[str, str]]:
+    """
+    获取已安装包的详细信息（通过pip show）
+    返回包含 Name, Version, Location 等信息的字典
+    """
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "show", pip_package],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30
+        )
+        if result.returncode != 0:
+            return None
+        
+        # 安全检查：确保 stdout 不为空
+        if not result.stdout:
+            return None
+        
+        info = {}
+        for line in result.stdout.strip().split('\n'):
+            if ':' in line:
+                key, _, value = line.partition(':')
+                info[key.strip()] = value.strip()
+        return info
+    except Exception:
+        return None
+
+
+def check_local_module_exists(module_name: str, search_paths: List[Path]) -> Optional[Path]:
+    """
+    检查指定的模块名是否是本地模块（项目目录中的.py文件或包目录）
+    
+    Args:
+        module_name: 模块名（如 'BA'）
+        search_paths: 要搜索的路径列表（通常是项目根目录和扫描的文件所在目录）
+    
+    Returns:
+        如果找到本地模块，返回其路径；否则返回None
+    """
+    # 参数验证
+    if not module_name or not module_name.strip():
+        return None
+    
+    for search_path in search_paths:
+        try:
+            if not search_path.exists():
+                continue
+            
+            # 检查是否存在同名的.py文件
+            py_file = search_path / f"{module_name}.py"
+            if py_file.exists():
+                return py_file
+            
+            # 检查是否存在同名的包目录（包含__init__.py）
+            pkg_dir = search_path / module_name
+            if pkg_dir.is_dir() and (pkg_dir / "__init__.py").exists():
+                return pkg_dir
+        except (PermissionError, OSError):
+            # 跳过无权限访问的路径
+            continue
+    
+    return None
+
+
+def diagnose_import_failure(expected_module: str, pip_package: str) -> Tuple[str, Optional[str]]:
+    """
+    诊断导入失败的原因，检测是否是大小写问题或其他问题
+    
+    Args:
+        expected_module: 期望的模块名（用户代码中的导入名，如 'BA'）
+        pip_package: 安装的pip包名（如 'ba'）
+    
+    Returns:
+        (诊断消息, 可能的正确模块名)
+    """
+    # 参数验证
+    if not expected_module or not expected_module.strip():
+        return ("模块名不能为空", None)
+    if not pip_package or not pip_package.strip():
+        return (f"无法导入 '{expected_module}'（pip包名无效）", None)
+    
+    # 检查是否是大小写问题：尝试用小写模块名导入
+    lowercase_module = expected_module.lower()
+    if lowercase_module != expected_module:
+        if check_package_installed(lowercase_module):
+            return (
+                f"安装的包模块名是 '{lowercase_module}'（小写），而非 '{expected_module}'。"
+                f"\n   💡 这可能是一个不相关的包，请检查：\n"
+                f"      1. '{expected_module}' 是否是本地模块（同目录下的 {expected_module}.py）？\n"
+                f"      2. 如果需要特定的pip包，请在 PACKAGE_MAPPING 中添加映射",
+                lowercase_module
+            )
+    
+    # 检查是否安装了包但模块名完全不同
+    pkg_info = get_installed_package_info(pip_package)
+    if pkg_info:
+        actual_name = pkg_info.get('Name', pip_package)
+        return (
+            f"pip包 '{actual_name}' 已安装，但无法导入 '{expected_module}'。\n"
+            f"   💡 可能原因：\n"
+            f"      1. '{expected_module}' 是本地模块，不需要pip安装\n"
+            f"      2. 需要不同的pip包，请在 PACKAGE_MAPPING 中添加正确映射\n"
+            f"      3. pip包 '{actual_name}' 的模块名可能不是 '{expected_module}'",
+            None
+        )
+    
+    return (f"无法导入 '{expected_module}'", None)
 
 
 def run_package_post_install(pip_package: str) -> bool:
@@ -1018,6 +1184,12 @@ def install_package(package_name: str, pip_package: str, auto_retry: bool = True
     Returns:
         (是否成功, 消息, 实际使用的pip包名)
     """
+    # 参数验证
+    if not pip_package or not pip_package.strip():
+        return False, "安装失败: pip包名不能为空", None
+    if not package_name or not package_name.strip():
+        return False, "安装失败: 模块名不能为空", None
+    
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", pip_package],
@@ -1073,8 +1245,12 @@ def install_package(package_name: str, pip_package: str, auto_retry: bool = True
                 for module in modules_to_check:
                     if check_package_installed(module):
                         return True, "安装并验证成功", pip_package
-                # 如果所有模块都验证失败
-                return False, "安装成功但验证失败", pip_package
+                # 如果所有模块都验证失败，进行诊断
+                diagnosis_msg, actual_module = diagnose_import_failure(package_name, pip_package)
+                if actual_module:
+                    # 找到了实际可以导入的模块名（大小写不同）
+                    return False, f"安装成功但模块名不匹配: {diagnosis_msg}", pip_package
+                return False, f"安装成功但验证失败: {diagnosis_msg}", pip_package
             else:
                 # 所有模块都必须能导入才算成功
                 failed_modules = []
@@ -1285,10 +1461,11 @@ def scan_and_install(scan_path: Optional[str] = None, scan_subdirs: bool = True,
             safe_print(f"     • {pkg} ({files_count} 文件, {imports_count} 导入)")
     
     # 继续安装流程...
-    enhanced_process_installation(tracker, generate_req, project_name)
+    enhanced_process_installation(tracker, generate_req, project_name, Path(scan_path))
 
 
-def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, project_name: str):
+def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, project_name: str, 
+                                  scan_root: Optional[Path] = None):
     """处理增强版安装流程"""
     
     third_party_packages = tracker.get_third_party_packages()
@@ -1298,6 +1475,15 @@ def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, p
     
     already_installed = []
     need_install = []
+    local_modules = []  # 检测到的本地模块
+    
+    # 收集需要搜索本地模块的路径
+    search_paths = set()
+    if scan_root:
+        search_paths.add(scan_root)
+    # 添加所有扫描文件的所在目录
+    for file_path in tracker.file_imports.keys():
+        search_paths.add(file_path.parent)
     
     # 按pip包名分组，以便处理多模块映射的情况
     pip_package_groups = {}
@@ -1355,9 +1541,16 @@ def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, p
         if is_installed:
             already_installed.extend(module_names)
         else:
-            # 包未安装，添加所有模块名
+            # 在安装前检查是否是本地模块（防止误安装不相关的PyPI包）
             for module_name in module_names:
-                need_install.append((module_name, pip_pkg))
+                # 检查是否是本地模块
+                local_path = check_local_module_exists(module_name, list(search_paths))
+                if local_path:
+                    # 这是本地模块，跳过安装
+                    local_modules.append((module_name, local_path))
+                else:
+                    # 需要安装
+                    need_install.append((module_name, pip_pkg))
     
     if already_installed:
         print_colored(f"\n   ✓ 已安装 ({len(already_installed)}):", "green")
@@ -1365,6 +1558,16 @@ def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, p
             safe_print(f"     • {pkg}")
         if len(already_installed) > 5:
             safe_print(f"     ... 还有 {len(already_installed) - 5} 个")
+    
+    if local_modules:
+        print_colored(f"\n   📁 本地模块 ({len(local_modules)}) - 无需安装:", "cyan")
+        for module_name, local_path in local_modules[:5]:
+            safe_print(f"     • {module_name} → {local_path}")
+        if len(local_modules) > 5:
+            safe_print(f"     ... 还有 {len(local_modules) - 5} 个")
+    
+    # 收集本地模块名称（用于从requirements中排除）
+    local_module_names = set(module_name for module_name, _ in local_modules)
     
     if not need_install:
         print_colored("\n🎉 所有包都已安装!", "green")
@@ -1384,7 +1587,7 @@ def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, p
         
         success_modules = []  # 成功安装的模块名列表（用于统计）
         failed = []
-        failed_packages = set()  # 失败的import包名
+        failed_packages = set()  # 真正安装失败的包
         failed_pip_packages = set()  # 失败的pip包名
         
         install_index = 0
@@ -1452,10 +1655,13 @@ def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, p
         print_colored("📊 安装总结", "bold")
         print_colored("=" * 70, "cyan")
         
-        total = len(third_party_packages)
+        # 统计时排除本地模块
+        total_third_party = len(third_party_packages) - len(local_modules)
         installed = len(already_installed) + len(success_modules)
         
-        print(f"\n你的代码直接使用: {total} 个第三方包")
+        print(f"\n你的代码直接使用: {total_third_party} 个第三方包")
+        if local_modules:
+            print(f"本地模块（无需安装）: {len(local_modules)} 个")
         print_colored(f"✓ 已就绪: {installed} 个", "green")
         
         if failed:
@@ -1474,7 +1680,8 @@ def enhanced_process_installation(tracker: PackageTracker, generate_req: bool, p
             enhanced_requirements = generate_enhanced_requirements(
                 tracker, "requirements.txt", project_name,
                 failed_packages=failed_packages,
-                failed_pip_packages=failed_pip_packages
+                failed_pip_packages=failed_pip_packages,
+                local_packages=local_module_names
             )
             
             print_colored(f"   ✅ 已生成增强版 requirements.txt ({len(enhanced_requirements)} 个直接依赖)", "green")
@@ -1531,8 +1738,8 @@ def manual_install(imports_code: str, generate_req: bool = True):
         print_colored("\n✨ 所有包都是标准库!", "green")
         return
     
-    # 使用增强版安装流程
-    enhanced_process_installation(tracker, generate_req, "manual_imports")
+    # 使用增强版安装流程（手动模式没有扫描路径）
+    enhanced_process_installation(tracker, generate_req, "manual_imports", None)
 
 
 if __name__ == "__main__":
