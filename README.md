@@ -2,6 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-168%20passed-brightgreen.svg)](run_tests.py)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 一个强大的Python项目依赖管理工具，能够自动扫描项目中的所有Python文件，智能提取导入语句，并生成详细的依赖文档。
@@ -22,6 +23,7 @@
 - **依赖统计**：分析每个包的使用频率和分布情况
 - **自动安装**：一键安装所有缺失的第三方包
 - **安装验证**：安装后自动验证包是否可用
+- **特殊包处理**：支持pywin32等需要特殊处理的包
 
 ### 📋 详细文档
 - **增强版requirements.txt**：不仅列出包名，还包含：
@@ -38,8 +40,8 @@
 - **边界情况处理**：完善的错误处理和边界情况处理
 
 ### 🧪 测试覆盖
-- **完整测试套件**：35个单元测试，覆盖所有核心功能
-- **集成测试**：测试完整工作流程
+- **完整测试套件**：168个单元测试，覆盖所有核心功能
+- **7个测试模块**：Import提取、文件操作、包追踪、包名映射、特殊处理、Requirements生成、集成测试
 - **边界测试**：测试各种边界情况和异常处理
 
 ## 📥 安装
@@ -210,8 +212,26 @@ import (
 | `yaml` | `pyyaml` |
 | `MySQLdb` | `mysqlclient` |
 | `pkg_resources` | `setuptools` |
+| `win32clipboard` | `pywin32` |
+| `win32con` | `pywin32` |
+| `win32api` | `pywin32` |
 
-### 2. 详细的依赖追踪
+### 2. 特殊包处理
+自动处理需要特殊安装流程的包：
+
+```python
+PACKAGE_SPECIAL_HANDLING = {
+    'pywin32': {
+        'post_install_script': 'pywin32_postinstall',
+        'post_install_args': ['-install'],
+        'skip_import_verify': True,  # 使用pip show验证
+    },
+}
+```
+
+pywin32等包安装后需要重启Python才能导入，工具会自动使用`pip show`验证安装成功。
+
+### 3. 详细的依赖追踪
 ```python
 @dataclass
 class ImportInfo:
@@ -223,7 +243,7 @@ class ImportInfo:
     pip_package: str       # pip包名
 ```
 
-### 3. 项目统计分析
+### 4. 项目统计分析
 - 📊 包使用频率统计
 - 📁 文件级别的导入分析
 - 🔗 依赖关系追踪
@@ -274,7 +294,10 @@ third_party = tracker.get_third_party_packages()
 python run_tests.py
 
 # 运行特定测试模块
-python -m unittest tests.test_import_extraction
+python run_tests.py test_import_extraction
+
+# 详细输出
+python run_tests.py -v
 ```
 
 ## 📊 输出格式
@@ -295,13 +318,15 @@ python -m unittest tests.test_import_extraction
 
 项目包含完整的测试套件：
 
-- **35个单元测试**：覆盖所有核心功能
+- **168个单元测试**：覆盖所有核心功能
 - **测试模块**：
-  - `test_import_extraction.py` - Import提取测试（17个测试）
-  - `test_file_operations.py` - 文件操作测试（8个测试）
-  - `test_package_tracker.py` - 包追踪测试（5个测试）
-  - `test_requirements_generation.py` - Requirements生成测试（3个测试）
-  - `test_integration.py` - 集成测试（2个测试）
+  - `test_import_extraction.py` - Import提取测试（32个测试）
+  - `test_file_operations.py` - 文件操作测试（22个测试）
+  - `test_package_tracker.py` - 包追踪器测试（17个测试）
+  - `test_package_mapping.py` - 包名映射测试（36个测试）
+  - `test_special_handling.py` - 特殊包处理测试（20个测试）
+  - `test_requirements_generation.py` - Requirements生成测试（24个测试）
+  - `test_integration.py` - 集成测试（17个测试）
 
 运行测试：
 ```bash
@@ -319,6 +344,14 @@ python run_tests.py
 5. 开启Pull Request
 
 ## 📝 更新日志
+
+### v2.2.0 (2025-11-29)
+- ✨ 新增特殊包处理机制（支持pywin32等）
+- ✨ 新增`pip show`验证方式
+- ✨ 全新测试套件（168个测试）
+- 🐛 修复pywin32安装验证失败问题
+- 🐛 修复文件数统计不准确问题
+- 🗑️ 移除未使用的冗余代码
 
 ### v2.1.0 (2025-11-29)
 - ✨ 新增多行import语句完整支持（使用括号）
@@ -363,6 +396,9 @@ A: 完全支持！工具可以正确处理使用括号的多行import语句。
 
 ### Q: 相对导入会被识别吗？
 A: 不会。工具会自动过滤相对导入（以`.`开头的导入），只识别第三方包。
+
+### Q: pywin32安装后显示"需重启Python后可导入"是什么意思？
+A: pywin32是特殊包，安装后需要重启Python进程才能导入使用。工具会自动使用`pip show`验证安装成功，您只需重启Python即可正常使用。
 
 ## 📄 许可证
 
